@@ -1,16 +1,50 @@
 package main
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"unicode/utf8"
 )
 
-func main() {
-	allow_control := false
-	handle_cp1252 := true
+type Encoding int
 
-	input, err := ioutil.ReadAll(os.Stdin)
+const (
+	ISO_8859_1 Encoding = iota
+	// TODO: ISO_8859_15
+	CP1252
+)
+
+type Fixer struct {
+	allowControl bool
+	handleCP1252 bool
+}
+
+func AllowControl(f *Fixer) error {
+	f.allowControl = true
+	return nil
+}
+
+func Assume(e Encoding) func(*Fixer) error {
+	return func(f *Fixer) error {
+		f.handleCP1252 = e == CP1252
+		return nil
+	}
+}
+
+func Fix(r io.Reader, w io.Writer, options ...func(*Fixer) error) {
+	f := &Fixer{}
+
+	for _, option := range options {
+		err := option(f)
+		if err != nil {
+			panic("invalid option")
+		}
+	}
+	allow_control := f.allowControl
+	handle_cp1252 := f.handleCP1252
+
+	input, err := ioutil.ReadAll(r)
 	if err != nil {
 		panic(err)
 	}
@@ -132,5 +166,9 @@ func main() {
 		panic("unhandled char")
 	}
 
-	os.Stdout.Write(output)
+	w.Write(output)
+}
+
+func main() {
+	Fix(os.Stdin, os.Stdout, AllowControl, Assume(CP1252))
 }
