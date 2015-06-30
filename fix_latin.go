@@ -19,6 +19,7 @@ type Fixer struct {
 	allowControl      bool
 	handleCP1252      bool
 	handleISO_8859_15 bool
+	// TODO: fix or reject overlong utf8 sequences
 }
 
 func AllowControl(f *Fixer) error {
@@ -182,7 +183,7 @@ func Fix(r io.Reader, w io.Writer, options ...func(*Fixer) error) {
 			continue
 		}
 
-		// convert ISO-8859-1 to UTF-8
+		// ISO-8859-1
 		if input[0] >= 0x80 && input[0] <= 0xFF {
 			bytes := []byte(string(rune(input[0])))
 			for _, b := range bytes {
