@@ -11,13 +11,14 @@ type Encoding int
 
 const (
 	ISO_8859_1 Encoding = iota
-	// TODO: ISO_8859_15
+	ISO_8859_15
 	CP1252
 )
 
 type Fixer struct {
-	allowControl bool
-	handleCP1252 bool
+	allowControl      bool
+	handleCP1252      bool
+	handleISO_8859_15 bool
 }
 
 func AllowControl(f *Fixer) error {
@@ -27,9 +28,26 @@ func AllowControl(f *Fixer) error {
 
 func Assume(e Encoding) func(*Fixer) error {
 	return func(f *Fixer) error {
-		f.handleCP1252 = e == CP1252
+		switch e {
+		case CP1252:
+			f.handleCP1252 = true
+		case ISO_8859_15:
+			f.handleISO_8859_15 = true
+		}
 		return nil
 	}
+}
+
+// remainder is ISO-8859-1
+var iso_8859_15 = map[byte][]byte{
+	0xA4: {0xE2, 0x82, 0xAC}, // EURO SIGN
+	0xA6: {0xC5, 0xA0},       // LATIN CAPITAL LETTER S WITH CARON
+	0xA8: {0xC5, 0xA1},       // LATIN SMALL LETTER S WITH CARON
+	0xB4: {0xC5, 0xBD},       // LATIN CAPITAL LETTER Z WITH CARON
+	0xB8: {0xC5, 0xBE},       // LATIN SMALL LETTER Z WITH CARON
+	0xBC: {0xC5, 0x92},       // LATIN CAPITAL LIGATURE OE
+	0xBD: {0xC5, 0x93},       // LATIN SMALL LIGATURE OE
+	0xBE: {0xC5, 0xB8},       // LATIN CAPITAL LETTER Y WITH DIAERESIS
 }
 
 // remainder is ISO-8859-1
@@ -139,6 +157,17 @@ func Fix(r io.Reader, w io.Writer, options ...func(*Fixer) error) {
 		// CP1252
 		if f.handleCP1252 {
 			if bytes, ok := cp1252[input[0]]; ok {
+				for _, b := range bytes {
+					output = append(output, b)
+				}
+				input = input[1:]
+				continue
+			}
+		}
+
+		// ISO-8859-15
+		if f.handleISO_8859_15 {
+			if bytes, ok := iso_8859_15[input[0]]; ok {
 				for _, b := range bytes {
 					output = append(output, b)
 				}
