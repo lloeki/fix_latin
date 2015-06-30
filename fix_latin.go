@@ -73,8 +73,6 @@ func Fix(r io.Reader, w io.Writer, options ...func(*Fixer) error) {
 			panic("invalid option")
 		}
 	}
-	allow_control := f.allowControl
-	handle_cp1252 := f.handleCP1252
 
 	input, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -139,7 +137,7 @@ func Fix(r io.Reader, w io.Writer, options ...func(*Fixer) error) {
 		}
 
 		// CP1252
-		if handle_cp1252 {
+		if f.handleCP1252 {
 			if bytes, ok := cp1252[input[0]]; ok {
 				for _, b := range bytes {
 					output = append(output, b)
@@ -150,7 +148,7 @@ func Fix(r io.Reader, w io.Writer, options ...func(*Fixer) error) {
 		}
 
 		// ISO-8859-1 high-order control chars
-		if !allow_control && input[0] >= 0x80 && input[0] <= 0x9F {
+		if !f.allowControl && input[0] >= 0x80 && input[0] <= 0x9F {
 			panic("control char")
 			continue
 		}
